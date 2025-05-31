@@ -1,0 +1,21 @@
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDM4iRXX5OykLE5feEfSwnJcTUmvarVazY",
+  authDomain: "final-scriptures.firebaseapp.com",
+  projectId: "final-scriptures",
+  storageBucket: "final-scriptures.appspot.com",
+  messagingSenderId: "889401009784",
+  appId: "1:889401009784:web:6fd29335a5f2a9b8406f8d",
+  measurementId: "G-2GC3YEE3R5"
+};
+
+// Initialize Firebase (but only once)
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export { app, auth, db }; 

@@ -1,0 +1,69 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build output
+.next/
+out/
+dist/
+.cache/
+build/
+
+# TypeScript
+*.tsbuildinfo
+
+# Firebase
+firebase-debug.log
+firestore.indexes.json
+firestore.rules
+firebase.json
+.firebaserc
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# System files
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor settings
+.vscode/
+.idea/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Zip and compressed files
+*.zip
+*.tar.gz
+*.rar
+
+# Env vars
+.env
+.env.local
+.env.*.local
+
+# Public assets cache
+public/*.webp
+public/*.tmp.*
+
+# Lock files (if you don't want to commit them)
+# Uncomment one of the following if you're using a different package manager
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Optional: OS permissions cache
+*.DS_Store

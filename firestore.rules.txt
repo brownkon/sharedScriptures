@@ -1,0 +1,44 @@
+// Firestore Security Rules
+// Copy these rules to your Firebase Console: https://console.firebase.google.com/project/final-scriptures/firestore/rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public scripture collections that anyone can read (even without login)
+    match /books/{bookId} {
+      allow read: if true;
+      allow write: if false; // Only admin can write
+    }
+    
+    match /chapters/{chapterId} {
+      allow read: if true;
+      allow write: if false; // Only admin can write
+    }
+    
+    match /verses/{verseId} {
+      allow read: if true;
+      allow write: if false; // Only admin can write
+    }
+    
+    // User-specific collections that require authentication
+    match /annotations/{annotationId} {
+      allow read: if 
+        // Public annotations can be read by anyone
+        resource.data.visibility == 'public' || 
+        // Private annotations can only be read by the owner
+        resource.data.userId == request.auth.uid;
+      
+      allow create: if 
+        request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      
+      allow update, delete: if 
+        request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    match /user_data/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+} 
