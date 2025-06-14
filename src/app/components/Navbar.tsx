@@ -99,6 +99,28 @@ export default function Navbar() {
           <div className="flex items-center space-x-6">
             {user ? (
               <>
+                <Link 
+                  href="/annotations" 
+                  className={`text-sm font-medium transition-colors duration-200 ${
+                    pathname === '/annotations' 
+                      ? 'text-blue-600 dark:text-blue-400' 
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  My Annotations
+                </Link>
+                
+                <Link 
+                  href="/groups" 
+                  className={`text-sm font-medium transition-colors duration-200 ${
+                    pathname === '/groups' 
+                      ? 'text-blue-600 dark:text-blue-400' 
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  Study Groups
+                </Link>
+                
                 {needsSync && (
                   <div className="flex items-center bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded-lg">
                     <button
@@ -153,4 +175,4 @@ export default function Navbar() {
       </div>
     </nav>
   );
-} 
+}

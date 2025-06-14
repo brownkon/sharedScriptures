@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { collection, query, where, getDocs, doc, getDoc, orderBy, onSnapshot, writeBatch, serverTimestamp, deleteDoc, updateDoc } from 'firebase/firestore';
 import AnnotationManager from './AnnotationManager';
 import { useFirebase } from '../providers';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import io from 'socket.io-client';
 import { useHighlight } from '../contexts/HighlightContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -62,6 +62,7 @@ const colors = [
 
 export default function ScriptureReader() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { db, user, loading: authLoading } = useFirebase();
   const { needsSync, setNeedsSync, isSyncing, setIsSyncing, localHighlights, setLocalHighlights } = useHighlight();
   const [books, setBooks] = useState<Book[]>([]);
@@ -94,6 +95,32 @@ export default function ScriptureReader() {
       router.push('/login');
     }
   }, [user, authLoading, router]);
+
+  // Handle URL parameters for navigation from annotations
+  useEffect(() => {
+    const book = searchParams.get('book');
+    const chapter = searchParams.get('chapter');
+    const verse = searchParams.get('verse');
+
+    if (book && books.length > 0) {
+      setSelectedBook(book);
+      
+      if (chapter) {
+        // Set navigation intent for the chapter
+        navigationRef.current = {
+          book: book,
+          chapter: chapter
+        };
+      }
+      
+      if (verse) {
+        // Set the verse to be selected after verses are loaded
+        setTimeout(() => {
+          setSelectedVerse(verse);
+        }, 500);
+      }
+    }
+  }, [searchParams, books]);
 
   // Fetch all books on component mount
   useEffect(() => {

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, addDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, addDoc, deleteDoc, doc, onSnapshot, or } from 'firebase/firestore';
 import { useFirebase } from '../providers';
+import GroupAnnotations from './GroupAnnotations';
 
 interface Annotation {
   id?: string;
@@ -12,6 +13,14 @@ interface Annotation {
   color: string;
   timestamp: Date;
   visibility: 'private' | 'group' | 'public';
+  groupId?: string;
+}
+
+interface StudyGroup {
+  id: string;
+  name: string;
+  description: string;
+  members: string[];
 }
 
 interface AnnotationManagerProps {
@@ -25,6 +34,8 @@ export default function AnnotationManager({ verseId }: AnnotationManagerProps) {
   const [selectedColor, setSelectedColor] = useState('#FFEB3B'); // Default yellow
   const [visibility, setVisibility] = useState<'private' | 'group' | 'public'>('private');
   const [loading, setLoading] = useState(true);
+  const [userGroups, setUserGroups] = useState<StudyGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   const colors = [
     { name: 'Yellow', value: '#FFEB3B' },
@@ -34,35 +45,77 @@ export default function AnnotationManager({ verseId }: AnnotationManagerProps) {
     { name: 'Purple', value: '#CE93D8' },
   ];
 
+  // Fetch user's groups
+  useEffect(() => {
+    if (!user) return;
+
+    const groupsQuery = query(
+      collection(db, 'studyGroups'),
+      where('members', 'array-contains', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(groupsQuery, (snapshot) => {
+      const groups: StudyGroup[] = [];
+      snapshot.forEach((doc) => {
+        groups.push({
+          id: doc.id,
+          ...doc.data(),
+        } as StudyGroup);
+      });
+      setUserGroups(groups);
+      if (groups.length > 0 && !selectedGroupId) {
+        setSelectedGroupId(groups[0].id);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user, db]);
+
   // Listen for annotation changes
   useEffect(() => {
     if (!verseId || !user) return;
 
-    // Query for personal and public annotations
-    const personalAndPublicQuery = query(
+    const annotationsQuery = query(
       collection(db, 'annotations'),
       where('verseId', '==', verseId)
     );
 
-    const unsubscribe = onSnapshot(personalAndPublicQuery, (snapshot) => {
+    const unsubscribe = onSnapshot(annotationsQuery, async (snapshot) => {
       const annotationList: Annotation[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        // Only include annotations that are public or belong to the current user
-        if (data.visibility === 'public' || data.userId === user.uid) {
-          annotationList.push({
-            id: doc.id,
-            ...data,
-            timestamp: data.timestamp?.toDate() || new Date(),
-          } as Annotation);
+      
+      const userGroupIds = userGroups.map(group => group.id);
+
+      snapshot.forEach((docSnapshot) => {
+        const data = docSnapshot.data();
+        const annotation = {
+          id: docSnapshot.id,
+          ...data,
+          timestamp: data.timestamp?.toDate() || new Date(),
+        } as Annotation;
+
+        // Include annotation if:
+        // 1. It's the user's own annotation (any visibility)
+        // 2. It's a public annotation
+        // 3. It's a group annotation and user is in that group
+        if (
+          annotation.userId === user.uid ||
+          annotation.visibility === 'public' ||
+          (annotation.visibility === 'group' && 
+           annotation.groupId && 
+           userGroupIds.includes(annotation.groupId))
+        ) {
+          annotationList.push(annotation);
         }
       });
+
+      // Sort by timestamp
+      annotationList.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
       setAnnotations(annotationList);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [verseId, user, db]);
+  }, [verseId, user, db, userGroups]);
 
   const handleAddAnnotation = async () => {
     if (!newAnnotationText.trim() || !user || !verseId) return;
@@ -75,6 +128,7 @@ export default function AnnotationManager({ verseId }: AnnotationManagerProps) {
         color: selectedColor,
         timestamp: new Date(),
         visibility,
+        ...(visibility === 'group' && selectedGroupId && { groupId: selectedGroupId }),
       };
 
       await addDoc(collection(db, 'annotations'), newAnnotation);
@@ -116,7 +170,8 @@ export default function AnnotationManager({ verseId }: AnnotationManagerProps) {
             >
               <div className="flex justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {annotation.visibility === 'public' ? 'Public' : 'Private'} · 
+                  {annotation.visibility === 'public' ? 'Public' : 
+                   annotation.visibility === 'group' ? 'Group' : 'Private'} · 
                   {' '}{new Date(annotation.timestamp).toLocaleString()}
                 </span>
                 {annotation.userId === user.uid && (
@@ -153,16 +208,76 @@ export default function AnnotationManager({ verseId }: AnnotationManagerProps) {
           />
         </div>
         
+        {/* Color Selection */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Highlight Color
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {colors.map((color) => (
+              <button
+                key={color.value}
+                type="button"
+                onClick={() => setSelectedColor(color.value)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                  selectedColor === color.value
+                    ? 'border-gray-400 dark:border-gray-500 bg-gray-50 dark:bg-gray-600'
+                    : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+                title={`Select ${color.name} color`}
+              >
+                <div
+                  className="w-4 h-4 rounded-full border border-gray-300"
+                  style={{ backgroundColor: color.value }}
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  {color.name}
+                </span>
+                {selectedColor === color.value && (
+                  <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
         
-        <div className="flex items-center mb-4">
-          <select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as 'private' | 'group' | 'public')}
-            className="border rounded p-1 text-gray-800 dark:text-gray-200 dark:bg-gray-700 dark:border-gray-600"
-          >
-            <option value="private">Private</option>
-            <option value="public">Public</option>
-          </select>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Visibility
+          </label>
+          <div className="flex items-center space-x-4">
+            <select
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as 'private' | 'group' | 'public')}
+              className="border rounded p-2 text-gray-800 dark:text-gray-200 dark:bg-gray-700 dark:border-gray-600"
+            >
+              <option value="private">Private</option>
+              {userGroups.length > 0 && <option value="group">Group</option>}
+              <option value="public">Public</option>
+            </select>
+            
+            {visibility === 'group' && userGroups.length > 0 && (
+              <select
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+                className="border rounded p-2 text-gray-800 dark:text-gray-200 dark:bg-gray-700 dark:border-gray-600"
+              >
+                {userGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          
+          {visibility === 'group' && userGroups.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Join a study group to share annotations with group members.
+            </p>
+          )}
         </div>
         
         <button
@@ -175,4 +290,4 @@ export default function AnnotationManager({ verseId }: AnnotationManagerProps) {
       </div>
     </div>
   );
-} 
+}

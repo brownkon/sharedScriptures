@@ -26,19 +26,70 @@ service cloud.firestore {
         // Public annotations can be read by anyone
         resource.data.visibility == 'public' || 
         // Private annotations can only be read by the owner
-        resource.data.userId == request.auth.uid;
+        resource.data.userId == request.auth.uid ||
+        // Group annotations can be read by group members
+        (resource.data.visibility == 'group' && 
+         resource.data.groupId != null &&
+         exists(/databases/$(database)/documents/studyGroups/$(resource.data.groupId)) &&
+         request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(resource.data.groupId)).data.members);
       
       allow create: if 
         request.auth != null && 
-        request.resource.data.userId == request.auth.uid;
+        request.resource.data.userId == request.auth.uid &&
+        // If it's a group annotation, user must be a member of that group
+        (request.resource.data.visibility != 'group' ||
+         (request.resource.data.groupId != null &&
+          exists(/databases/$(database)/documents/studyGroups/$(request.resource.data.groupId)) &&
+          request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(request.resource.data.groupId)).data.members));
       
       allow update, delete: if 
         request.auth != null && 
         resource.data.userId == request.auth.uid;
     }
     
+    // Study Groups
+    match /studyGroups/{groupId} {
+      allow read: if 
+        request.auth != null && 
+        (request.auth.uid in resource.data.members || 
+         request.auth.email in resource.data.invitations);
+      
+      allow create: if 
+        request.auth != null && 
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.members.size() <= 3 &&
+        request.auth.uid in request.resource.data.members;
+      
+      allow update: if 
+        request.auth != null && 
+        (
+          // Group creator can update the group
+          resource.data.createdBy == request.auth.uid ||
+          // Users can accept invitations (add themselves to members, remove from invitations)
+          (request.auth.email in resource.data.invitations &&
+           request.auth.uid in request.resource.data.members &&
+           !(request.auth.email in request.resource.data.invitations) &&
+           request.resource.data.members.size() <= 3)
+        );
+      
+      allow delete: if 
+        request.auth != null && 
+        resource.data.createdBy == request.auth.uid;
+    }
+    
     match /user_data/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    
+    // Highlights collection
+    match /highlights/{highlightId} {
+      allow read, write: if 
+        request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      
+      allow create: if 
+        request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+    }
   }
-} 
+}
