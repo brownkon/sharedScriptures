@@ -100,6 +100,17 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link 
+                  href="/scriptures" 
+                  className={`text-sm font-medium transition-colors duration-200 ${
+                    pathname === '/scriptures' 
+                      ? 'text-blue-600 dark:text-blue-400' 
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  Scriptures
+                </Link>
+                
+                <Link 
                   href="/annotations" 
                   className={`text-sm font-medium transition-colors duration-200 ${
                     pathname === '/annotations' 
@@ -119,6 +130,17 @@ export default function Navbar() {
                   }`}
                 >
                   Study Groups
+                </Link>
+                
+                <Link 
+                  href="/study" 
+                  className={`text-sm font-medium transition-colors duration-200 ${
+                    pathname === '/study' 
+                      ? 'text-blue-600 dark:text-blue-400' 
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  Study Verses
                 </Link>
                 
                 {needsSync && (

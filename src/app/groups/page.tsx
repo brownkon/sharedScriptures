@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { collection, query, where, addDoc, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
 import { useFirebase } from '../providers';
 
@@ -21,7 +22,8 @@ interface User {
 }
 
 export default function GroupsPage() {
-  const { db, user } = useFirebase();
+  const router = useRouter();
+  const { db, user, loading: authLoading } = useFirebase();
   const [groups, setGroups] = useState<StudyGroup[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -30,6 +32,13 @@ export default function GroupsPage() {
   const [selectedGroup, setSelectedGroup] = useState<StudyGroup | null>(null);
   const [loading, setLoading] = useState(true);
   const [invitations, setInvitations] = useState<StudyGroup[]>([]);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   // Listen for groups where user is a member or has been invited
   useEffect(() => {
@@ -156,31 +165,34 @@ export default function GroupsPage() {
     }
   };
 
-  if (loading) {
-    return <div className="p-8 text-center">Loading groups...</div>;
-  }
-
-  if (!user) {
+  if (authLoading || loading) {
     return (
-      <div className="p-8 bg-yellow-100 text-yellow-800 rounded">
-        Please sign in to access study groups.
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Loading...</h1>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-4xl mx-auto p-6 pt-24">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Study Groups</h1>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Create Group
-        </button>
-      </div>
+  if (!user) {
+    return null; // Will redirect to login
+  }
 
-      {/* Invitations */}
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="flex justify-end mb-8">
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Create Group
+          </button>
+        </div>
+
+        {/* Invitations */}
       {invitations.length > 0 && (
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Invitations</h2>
@@ -214,9 +226,9 @@ export default function GroupsPage() {
             ))}
           </div>
         </div>
-      )}
+        )}
 
-      {/* Create Group Form */}
+        {/* Create Group Form */}
       {showCreateForm && (
         <div className="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Create New Group</h2>
@@ -262,9 +274,9 @@ export default function GroupsPage() {
             </div>
           </div>
         </div>
-      )}
+        )}
 
-      {/* Groups List */}
+        {/* Groups List */}
       <div className="space-y-6">
         {groups.length > 0 ? (
           groups.map((group) => (
@@ -344,6 +356,7 @@ export default function GroupsPage() {
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

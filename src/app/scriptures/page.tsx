@@ -11,32 +11,31 @@ export default function ScripturesPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    console.log("Scriptures page auth state:", { user, loading });
     if (!loading && !user) {
-      console.log("User not authenticated, redirecting to login");
       router.push('/login');
     }
   }, [user, loading, router]);
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8 text-center">
-        <p>Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Loading...</h1>
+        </div>
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <div className="container mx-auto py-8 text-center">
-        <p>You need to log in to view scriptures.</p>
-      </div>
-    );
+    return null; // Will redirect to login
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <ScriptureReader />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
+      <div className="max-w-7xl mx-auto p-6">
+        <ScriptureReader />
+      </div>
     </div>
   );
-} 
+}

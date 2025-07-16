@@ -135,7 +135,7 @@ export default function AnnotationsPage() {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-6">
           <div className="text-center py-8 text-gray-600 dark:text-gray-400">
             Loading annotations...
           </div>
@@ -150,15 +150,7 @@ export default function AnnotationsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            My Annotations
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            View and manage all your scripture annotations
-          </p>
-        </div>
+      <div className="max-w-7xl mx-auto p-6">
 
         {/* Color Filter */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
