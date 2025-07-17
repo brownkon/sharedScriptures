@@ -9,6 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import ProfileModal from './ProfileModal';
 
 interface HighlightedWord {
   id?: string;
@@ -28,6 +29,7 @@ export default function Navbar() {
   const { user, auth } = useFirebase();
   const { needsSync, setNeedsSync, isSyncing, setIsSyncing, localHighlights } = useHighlight();
   const { isDarkMode } = useTheme();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
   useEffect(() => {
     console.log('Navbar - needsSync:', needsSync);
@@ -159,16 +161,33 @@ export default function Navbar() {
                 )}
                 
                 <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-3">
-                    {user.photoURL && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsProfileModalOpen(true)}
+                      className="flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg px-3 py-2 transition-colors"
+                    >
+                    {user.photoURL ? (
                       <img 
                         src={user.photoURL} 
                         alt="Profile" 
                         className="w-8 h-8 rounded-full ring-2 ring-gray-200 dark:ring-gray-700" 
                       />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
                     )}
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{user.displayName}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{user.displayName || 'User'}</span>
+                    </button>
+                    
+                    <ProfileModal 
+                      isOpen={isProfileModalOpen} 
+                      onClose={() => setIsProfileModalOpen(false)} 
+                    />
                   </div>
+                  
                   <button 
                     onClick={handleSignOut}
                     className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200"

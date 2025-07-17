@@ -9,7 +9,6 @@ import Link from 'next/link';
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useFirebase();
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -19,7 +18,8 @@ export default function HomePage() {
   }, [user, loading, router]);
 
   const handleDateSelect = (date: string) => {
-    setSelectedDate(date);
+    // Date selection is handled by the calendar component itself
+    console.log('Selected date:', date);
   };
 
   const navigateToAnnotations = () => {

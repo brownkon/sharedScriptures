@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs } from 'firebase/firestore';
 import { useFirebase } from '../providers';
+import { useRouter } from 'next/navigation';
 
 interface ReadingDay {
   date: string; // YYYY-MM-DD format
@@ -20,6 +21,10 @@ export default function ReadingCalendar({ onDateSelect }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAnnotations, setShowAnnotations] = useState(false);
+  const [dayAnnotations, setDayAnnotations] = useState<any[]>([]);
+  const [loadingAnnotations, setLoadingAnnotations] = useState(false);
+  const router = useRouter();
 
   // Get reading activity data
   useEffect(() => {
@@ -88,10 +93,69 @@ export default function ReadingCalendar({ onDateSelect }: CalendarProps) {
     return date.toISOString().split('T')[0];
   };
 
-  const handleDateClick = (date: Date) => {
+  const handleDateClick = async (date: Date) => {
     const dateKey = formatDateKey(date);
     setSelectedDate(dateKey);
     onDateSelect?.(dateKey);
+    
+    // If this date has annotations, load and show them
+    if (readingDays.has(dateKey)) {
+      setLoadingAnnotations(true);
+      setShowAnnotations(true);
+      
+      try {
+        // Load annotations for this specific date
+        const annotationsQuery = query(
+          collection(db, 'annotations'),
+          where('userId', '==', user.uid)
+        );
+        
+        const snapshot = await getDocs(annotationsQuery);
+        const annotationList: any[] = [];
+        
+        for (const docSnapshot of snapshot.docs) {
+          const data = docSnapshot.data();
+          const annotationTimestamp = data.timestamp?.toDate() || new Date();
+          const annotationDateKey = annotationTimestamp.toISOString().split('T')[0];
+          
+          if (annotationDateKey === dateKey) {
+            const annotation: any = {
+              id: docSnapshot.id,
+              ...data,
+              timestamp: annotationTimestamp,
+            };
+
+            // Fetch verse details
+            try {
+              const verseDoc = await getDoc(doc(db, 'verses', data.verseId));
+              if (verseDoc.exists()) {
+                const verseData = verseDoc.data();
+                annotation.verseReference = verseData.reference;
+                annotation.verseText = verseData.text;
+                annotation.bookId = verseData.bookId;
+                annotation.chapterId = verseData.chapterId;
+                annotation.verse = verseData.verse;
+              }
+            } catch (error) {
+              console.error('Error fetching verse details:', error);
+            }
+
+            annotationList.push(annotation);
+          }
+        }
+        
+        // Sort by timestamp (newest first)
+        annotationList.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        setDayAnnotations(annotationList);
+      } catch (error) {
+        console.error('Error loading annotations:', error);
+      } finally {
+        setLoadingAnnotations(false);
+      }
+    } else {
+      setShowAnnotations(false);
+      setDayAnnotations([]);
+    }
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -232,26 +296,102 @@ export default function ReadingCalendar({ onDateSelect }: CalendarProps) {
         })}
       </div>
 
-      {/* Selected date info */}
-      {selectedDate && readingDays.has(selectedDate) && (
-        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </h4>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {readingDays.get(selectedDate)!.annotationsCount} annotations created
-          </p>
-        </div>
-      )}
 
       {loading && (
         <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center rounded-lg">
           <div className="text-gray-600 dark:text-gray-400">Loading...</div>
+        </div>
+      )}
+
+      {/* Annotations Section */}
+      {showAnnotations && selectedDate && (
+        <div className="mt-6 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Annotations for {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </h3>
+            <button
+              onClick={() => setShowAnnotations(false)}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {loadingAnnotations ? (
+            <div className="text-center py-4">
+              <div className="text-gray-600 dark:text-gray-400">Loading annotations...</div>
+            </div>
+          ) : dayAnnotations.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {dayAnnotations.map((annotation) => (
+                <div
+                  key={annotation.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                  onClick={() => {
+                    if (annotation.bookId && annotation.chapterId) {
+                      const searchParams = new URLSearchParams({
+                        book: annotation.bookId,
+                        chapter: annotation.chapterId,
+                        verse: annotation.verseId
+                      });
+                      router.push(`/scriptures?${searchParams.toString()}`);
+                    }
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full border border-gray-300"
+                        style={{ backgroundColor: annotation.color }}
+                      />
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                        {annotation.verseReference || `Verse ${annotation.verseId}`}
+                      </h4>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        annotation.visibility === 'public' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-300'
+                      }`}>
+                        {annotation.visibility}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {annotation.timestamp.toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">
+                    {annotation.text}
+                  </p>
+                  
+                  {annotation.verseText && (
+                    <div className="border-l-2 border-gray-300 dark:border-gray-500 pl-3">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                        &ldquo;{annotation.verseText.length > 80 
+                          ? annotation.verseText.substring(0, 80) + '...' 
+                          : annotation.verseText}&rdquo;
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-gray-600 dark:text-gray-400">
+                No annotations found for this date.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

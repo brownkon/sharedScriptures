@@ -2,13 +2,14 @@
 
 import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { app, auth, db } from './firebase';
+import { app, auth, db, storage } from './firebase';
 
 // Create a context for Firebase
 type FirebaseContextType = {
   app: any;
   auth: any;
   db: any;
+  storage: any;
   user: any;
   loading: boolean;
 };
@@ -32,7 +33,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <FirebaseContext.Provider value={{ app, auth, db, user, loading }}>
+    <FirebaseContext.Provider value={{ app, auth, db, storage, user, loading }}>
       {children}
     </FirebaseContext.Provider>
   );
@@ -45,4 +46,4 @@ export function useFirebase() {
     throw new Error('useFirebase must be used within a FirebaseProvider');
   }
   return context;
-} 
+}
