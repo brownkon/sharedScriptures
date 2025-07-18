@@ -4,11 +4,16 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase } from './providers';
 import ReadingCalendar from './components/ReadingCalendar';
+import VerseOfTheDay from './components/VerseOfTheDay';
+import VerseHistory from './components/VerseHistory';
+import VerseSearch from './components/VerseSearch';
 import Link from 'next/link';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useFirebase();
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -53,6 +58,13 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Welcome back, {user.displayName || user.email}!
           </h1>
+        </div>
+
+        {/* Verse of the Day */}
+        <div className="mb-8">
+          <VerseOfTheDay 
+            onHistoryClick={() => setShowHistory(true)}
+          />
         </div>
 
         {/* Quick Actions */}
@@ -119,6 +131,12 @@ export default function HomePage() {
         <div>
           <ReadingCalendar onDateSelect={handleDateSelect} />
         </div>
+
+        {/* Modals */}
+        <VerseHistory 
+          isOpen={showHistory} 
+          onClose={() => setShowHistory(false)} 
+        />
       </div>
     </div>
   );
